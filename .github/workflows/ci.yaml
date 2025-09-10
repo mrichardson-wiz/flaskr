@@ -14,6 +14,8 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   IMAGE_TAG: ${{ github.sha }}
+  VULNERABILITY_POLICY: "Michael-Richardson-SE-Vulnerabilities"
+  SECRETS_POLICY: "Michael-Richardson-SE-Secrets"
 
 jobs:
   test:
@@ -45,6 +47,29 @@ jobs:
           uv run flask init-db
           uv run pytest
 
+  security-scan:
+    name: Run wizcli security scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download wizcli
+        run: |
+          curl -o wizcli https://wizcli.app.wiz.io/latest/wizcli
+          chmod +x wizcli && sudo mv wizcli /usr/bin
+          wizcli version
+
+      - name: Authenticate to Wiz
+        run: wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+
+      - name: Scan code directory with wizcli
+        run: wizcli dir scan --path . --policy "$VULNERABILITY_POLICY"
+
   docker:
     name: Docker Build/Scan/Push
     runs-on: ubuntu-latest
@@ -70,6 +95,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Download wizcli
+        run: |
+          curl -o wizcli https://wizcli.app.wiz.io/latest/wizcli
+          chmod +x wizcli && sudo mv wizcli /usr/bin
+          wizcli version
+
+      - name: Authenticate to Wiz
+        run: wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+
       - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5.8.0
@@ -90,6 +127,14 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      - name: Scan built Docker images with wizcli
+        id: scan
+        run: |
+          for tag in ${DOCKER_METADATA_OUTPUT_TAGS};
+          do
+            wizcli docker scan --image $tag
+          done
+
       - name: Push built Docker images
         if: ${{ github.event_name != 'pull_request' }}
         id: push
@@ -97,4 +142,13 @@ jobs:
           for tag in ${DOCKER_METADATA_OUTPUT_TAGS};
           do
             docker push $tag
+          done
+
+      - name: Tag built Docker images with wizcli
+        if: ${{ github.event_name != 'pull_request' }}
+        id: tag
+        run: |
+          for tag in ${DOCKER_METADATA_OUTPUT_TAGS};
+          do
+            wizcli docker tag --image $tag
           done
