@@ -177,7 +177,7 @@ wheels = [
 
 [[package]]
 name = "flaskr"
-version = "0.2.7"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "flask" },
