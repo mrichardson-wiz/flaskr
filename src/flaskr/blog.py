@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, g, redirect, render_template, request, url_for
+from flask import Blueprint, flash, g, jsonify, redirect, render_template, request, url_for
 from werkzeug.exceptions import abort
 
 from flaskr import db
@@ -12,6 +12,15 @@ bp = Blueprint("blog", __name__)
 def index():
     posts = Post.query.all()
     return render_template("blog/index.html", posts=posts)
+
+
+@bp.route("/search")
+def search():
+    query = request.args.get("q", "")
+    # VULN: SQL injection — user input concatenated directly into query string
+    sql = f"SELECT id, title, body FROM post WHERE title LIKE '%{query}%'"
+    results = db.session.execute(db.text(sql)).fetchall()
+    return jsonify([{"id": r[0], "title": r[1], "body": r[2]} for r in results])
 
 
 @bp.route("/create", methods=("GET", "POST"))
