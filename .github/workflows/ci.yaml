@@ -51,6 +51,10 @@ jobs:
     name: Run wizcli security scan
     runs-on: ubuntu-latest
 
+    env:
+      WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+      WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -63,9 +67,6 @@ jobs:
 
       - name: Scan code directory with wizcli
         run: wizcli scan dir . --policies="$VULNERABILITY_POLICY"
-        env:
-          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
 
   docker:
     name: Docker Build/Scan/Push
@@ -74,6 +75,10 @@ jobs:
     permissions:
       contents: read
       packages: write
+
+    env:
+      WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+      WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
 
     steps:
       - name: Checkout repository
@@ -125,9 +130,6 @@ jobs:
           do
             wizcli scan container-image $tag
           done
-        env:
-          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
 
       - name: Push built Docker images
         if: ${{ github.event_name != 'pull_request' }}
@@ -146,6 +148,3 @@ jobs:
           do
             wizcli tag $tag
           done
-        env:
-          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
