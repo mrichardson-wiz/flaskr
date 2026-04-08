@@ -16,6 +16,8 @@ env:
   IMAGE_TAG: ${{ github.sha }}
   VULNERABILITY_POLICY: "Michael-Richardson-SE-Vulnerabilities"
   SECRETS_POLICY: "Michael-Richardson-SE-Secrets"
+  WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+  WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
 
 jobs:
   test:
@@ -57,18 +59,12 @@ jobs:
 
       - name: Download wizcli
         run: |
-          curl -o wizcli https://wizcli.app.wiz.io/latest/wizcli
+          curl -o wizcli https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
           chmod +x wizcli && sudo mv wizcli /usr/bin
           wizcli version
 
-      - name: Authenticate to Wiz
-        run: wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
-        env:
-          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
-
       - name: Scan code directory with wizcli
-        run: wizcli dir scan --path . --policy "$VULNERABILITY_POLICY"
+        run: wizcli scan dir . --policies="$VULNERABILITY_POLICY"
 
   docker:
     name: Docker Build/Scan/Push
@@ -108,15 +104,9 @@ jobs:
 
       - name: Download wizcli
         run: |
-          curl -o wizcli https://wizcli.app.wiz.io/latest/wizcli
+          curl -o wizcli https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64
           chmod +x wizcli && sudo mv wizcli /usr/bin
           wizcli version
-
-      - name: Authenticate to Wiz
-        run: wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
-        env:
-          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
 
       - name: Extract metadata (tags, labels)
         id: meta
@@ -144,7 +134,7 @@ jobs:
         run: |
           for tag in ${DOCKER_METADATA_OUTPUT_TAGS};
           do
-            wizcli docker scan --image $tag
+            wizcli scan container-image $tag
           done
 
       - name: Push built Docker images
@@ -162,5 +152,5 @@ jobs:
         run: |
           for tag in ${DOCKER_METADATA_OUTPUT_TAGS};
           do
-            wizcli docker tag --image $tag
+            wizcli tag $tag
           done
